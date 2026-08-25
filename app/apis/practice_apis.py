@@ -1,6 +1,7 @@
 import re
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
+from typing import Optional
 
 router = APIRouter()
 
@@ -91,3 +92,62 @@ def register_user_handler(body: UserRegisterRequest):
     user_list.append(new_user)
 
     return new_user
+
+
+
+class UserUpdateRequest(BaseModel):
+    age: Optional[int] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+    @field_validator("age")
+    @classmethod
+    def validate_age(cls, v):
+        if v is not None and v < 14:
+            raise ValueError("나이는 최소 14세 이상이어야 합니다.")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v):
+        if v is None:
+            return v
+        if len(v) > 30:
+            raise ValueError("이메일은 최대 30자까지 가능합니다.")
+        pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        if not re.match(pattern, v):
+            raise ValueError("올바른 이메일 형식이 아닙니다.")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if v is None:
+            return v
+        if not (8 <= len(v) <= 20):
+            raise ValueError("비밀번호는 최소 8자, 최대 20자여야 합니다.")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("비밀번호에 대문자가 1개 이상 포함되어야 합니다.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("비밀번호에 소문자가 1개 이상 포함되어야 합니다.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("비밀번호에 특수문자가 1개 이상 포함되어야 합니다.")
+        return v
+
+
+@router.patch("/practice_api/users/{user_id}", summary="회원 정보 수정 API")
+def update_user_handler(user_id: int, body: UserUpdateRequest):
+    if body.age is None and body.email is None and body.password is None:
+        raise HTTPException(status_code=400, detail="수정할 항목이 하나 이상 필요합니다.")
+
+    for user in user_list:
+        if user["id"] == user_id:
+            if body.age is not None:
+                user["age"] = body.age
+            if body.email is not None:
+                user["email"] = body.email
+            if body.password is not None:
+                user["password"] = body.password
+            return user
+
+    raise HTTPException(status_code=404, detail="해당 id의 회원을 찾을 수 없습니다.")
