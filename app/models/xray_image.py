@@ -1,41 +1,31 @@
+import uuid as uuid_pkg
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import (
-    BigInteger,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    text,
-)
+from sqlalchemy import DateTime, ForeignKey, String, text
+from sqlalchemy.dialects.mysql import CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db.databases import Base
+from app.core.db.models import UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.medical_record import MedicalRecord
     from app.models.user import User
 
 
-class XrayImage(Base):
+class XrayImage(UUIDMixin, Base):
     __tablename__ = "xray_images"
 
-    id: Mapped[int] = mapped_column(
-        BigInteger,
-        primary_key=True,
-        autoincrement=True,
-    )
-
-    record_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("medical_records.id"),
+    record_id: Mapped[uuid_pkg.UUID] = mapped_column(
+        CHAR(36),
+        ForeignKey("medical_records.uuid"),
         nullable=False,
     )
 
-    uploader_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("users.id"),
+    uploader_id: Mapped[uuid_pkg.UUID] = mapped_column(
+        CHAR(36),
+        ForeignKey("users.uuid"),
         nullable=False,
     )
 
