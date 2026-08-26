@@ -1,19 +1,42 @@
-from sqlalchemy import Column, BigInteger, Boolean, DECIMAL, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+import uuid as uuid_pkg
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DECIMAL, ForeignKey, String
+from sqlalchemy.dialects.mysql import CHAR
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.db.databases import Base
+from app.core.db.models import TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from app.models.medical_record import MedicalRecord
 
 
-class AiAnalysisResult(Base):
+class AiAnalysisResult(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "ai_analysis_results"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    record_id = Column(BigInteger, ForeignKey("medical_records.id"), nullable=False)
-    is_pneumonia = Column(Boolean, nullable=False)
-    confidence = Column(DECIMAL(5, 2), nullable=False)
-    heatmap_url = Column(String(255), nullable=False)
-    ai_model = Column(String(50), nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=True, onupdate=func.now())
+    record_id: Mapped[uuid_pkg.UUID] = mapped_column(
+        CHAR(36),
+        ForeignKey("medical_records.uuid"),
+        nullable=False,
+    )
+    is_pneumonia: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+    )
+    confidence: Mapped[float] = mapped_column(
+        DECIMAL(5, 2),
+        nullable=False,
+    )
+    heatmap_url: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+    ai_model: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
 
-    medical_record = relationship("MedicalRecord", back_populates="ai_analysis_results")
+    medical_record: Mapped["MedicalRecord"] = relationship(
+        back_populates="ai_analysis_results",
+    )

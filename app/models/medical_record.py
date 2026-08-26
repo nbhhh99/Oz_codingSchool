@@ -1,17 +1,45 @@
-from sqlalchemy import Column, BigInteger, String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+import uuid as uuid_pkg
+from typing import TYPE_CHECKING
+
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.dialects.mysql import CHAR
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.db.databases import Base
+from app.core.db.models import TimestampMixin, UUIDMixin
+
+if TYPE_CHECKING:
+    from app.models.ai_analysis_result import AiAnalysisResult
+    from app.models.patient import Patient
+    from app.models.xray_image import XrayImage
 
 
-class MedicalRecord(Base):
+class MedicalRecord(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "medical_records"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    patient_id = Column(BigInteger, ForeignKey("patients.id"), nullable=False)
-    chart_number = Column(String(50), unique=True, nullable=False)
-    symptoms = Column(Text, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=True, onupdate=func.now())
+    patient_id: Mapped[uuid_pkg.UUID] = mapped_column(
+        CHAR(36),
+        ForeignKey("patients.uuid"),
+        nullable=False,
+    )
+    chart_number: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        nullable=False,
+    )
+    symptoms: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
 
-    ai_analysis_results = relationship("AiAnalysisResult", back_populates="medical_record")
+    patient: Mapped["Patient"] = relationship(
+        back_populates="medical_records",
+    )
+    ai_analysis_results: Mapped[list["AiAnalysisResult"]] = relationship(
+        back_populates="medical_record",
+        cascade="all, delete-orphan",
+    )
+    xray_images: Mapped[list["XrayImage"]] = relationship(
+        back_populates="medical_record",
+        cascade="all, delete-orphan",
+    )
