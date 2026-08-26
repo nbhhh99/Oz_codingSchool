@@ -1,16 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
-
-
-router = APIRouter(prefix="/practice_api", tags=["practice"])
-
-
 # app/apis/practice_apis.py
 import re
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, field_validator
 
-router = APIRouter(prefix="/practice_api")
+router = APIRouter(prefix="/practice_api", tags=["practice"])
 
 user_list = [
     {
@@ -36,6 +30,7 @@ user_list = [
     }
 ]
 
+
 @router.delete("/users/{user_id}", status_code=status.HTTP_200_OK)
 async def delete_user(user_id: int):
     for index, user in enumerate(user_list):
@@ -51,6 +46,7 @@ async def delete_user(user_id: int):
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Not Found",
     )
+
 
 class UserRegisterRequest(BaseModel):
     name: str
@@ -114,6 +110,14 @@ def register_user_handler(body: UserRegisterRequest):
     user_list.append(new_user)
 
     return new_user
+
+
+@router.get("/users", summary="회원 목록 조회 API")
+def get_users_handler():
+    return [
+        {"id": u["id"], "name": u["name"], "age": u["age"], "email": u["email"]}
+        for u in user_list
+    ]
 
 
 class UserUpdateRequest(BaseModel):
