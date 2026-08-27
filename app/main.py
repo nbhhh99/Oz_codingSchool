@@ -1,15 +1,16 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
-from app.apis.practice_apis import router as practice_router
+from fastapi import FastAPI, HTTPException
 from starlette.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 
 from app.apis.practice_apis import router as practice_router
+from app.apis.auth_apis import router as auth_router
 
 app = FastAPI()
 app.include_router(practice_router)
+app.include_router(auth_router)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,9 +24,6 @@ if not (BASE_DIR / "media").exists():
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 # 'media' 폴더를 '/media' 경로로 마운트 (사용자 업로드 파일 서빙용)
 app.mount("/media", StaticFiles(directory=BASE_DIR / "media"), name="media")
-
-# practice_apis 라우터 등록  ← 추가
-app.include_router(practice_router)
 
 
 @app.get(path="/healthcheck", status_code=200, include_in_schema=False)
@@ -46,7 +44,5 @@ async def catch_all(path: str):
         or path.startswith("static/")
         or path.startswith("media/")
     ):
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404)
     return FileResponse(BASE_DIR / "static" / "index.html")

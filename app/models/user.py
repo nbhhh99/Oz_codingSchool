@@ -1,10 +1,15 @@
 import enum
+import uuid as uuid_pkg
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Enum, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db.databases import Base
 from app.core.db.models import UUIDMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.xray_image import XrayImage
 
 
 class GenderEnum(str, enum.Enum):
@@ -31,9 +36,11 @@ class User(Base, UUIDMixin, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(20))
     phone_number: Mapped[str] = mapped_column(String(20), unique=True)
-
     gender: Mapped[GenderEnum] = mapped_column(Enum(GenderEnum), nullable=False)
     department: Mapped[DepartmentEnum] = mapped_column(Enum(DepartmentEnum), nullable=False)
     role: Mapped[RoleEnum] = mapped_column(Enum(RoleEnum), nullable=False)
-
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    uploaded_xray_images: Mapped[list["XrayImage"]] = relationship(
+        back_populates="uploader",
+    )
