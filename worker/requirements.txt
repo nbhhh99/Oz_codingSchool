@@ -1,0 +1,11 @@
+# 폐렴 예측 추론 워커 전용 의존성
+# 메인 FastAPI 앱과 분리해서 관리한다. (torch 계열은 용량이 커서 pyproject 에 넣지 않음)
+#
+# 설치 (CPU 버전):
+#   uv pip install -r worker/requirements.txt --index-url https://download.pytorch.org/whl/cpu
+# 또는:
+#   pip install -r worker/requirements.txt
+
+torch>=2.2
+torchvision>=0.17
+pillow>=10.0
