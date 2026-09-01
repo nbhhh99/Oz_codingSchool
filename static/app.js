@@ -103,7 +103,7 @@ function updateNav() {
         }
         
         authLink.innerHTML = `
-            <span class="user-info" onclick="navigate('/my-page')" style="cursor: pointer;">${state.user.name}(${state.user.department})</span>
+            <span class="user-info" onclick="navigate('/my-page')" style="cursor: pointer;">${state.user.name}(${utils.deptLabel(state.user.department)})</span>
             <a href="#" onclick="logout(event)" class="nav-btn logout-btn">로그아웃</a>
         `;
     } else {
@@ -165,6 +165,9 @@ async function navigate(path, pushState = true) {
         } else if (pathname.startsWith('/patients/') && pathname.endsWith('/medical-records/create')) {
             const patientId = pathname.split('/')[2];
             await pages.renderRecordCreate(patientId);
+        } else if (pathname.startsWith('/patients/') && pathname.includes('/medical-records/')) {
+            const parts = pathname.split('/');
+            await pages.renderRecordDetail(parts[2], parts[4]);
         } else if (pathname === '/my-page') {
             pages.renderMyPage();
         } else if (pathname === '/admin/users') {
@@ -172,9 +175,6 @@ async function navigate(path, pushState = true) {
         } else if (pathname.startsWith('/patients/')) {
             const patientId = pathname.split('/')[2];
             await pages.renderPatientDetail(patientId);
-        } else if (pathname.startsWith('/medical-records/')) {
-            const recordId = pathname.split('/')[2];
-            await pages.renderRecordDetail(recordId);
         } else {
             app.innerHTML = '<div class="card"><h2>404</h2><p>페이지를 찾을 수 없습니다.</p></div>';
         }
