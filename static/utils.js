@@ -41,6 +41,15 @@ const utils = {
         });
     },
 
+    deptLabel(dept) {
+        const labels = {
+            DEV: '개발팀',
+            MEDICAL: '의료진',
+            RESEARCH: '연구진',
+        };
+        return labels[dept] || dept || '';
+    },
+
     formatPhoneNumber(value) {
         if (!value) return value;
         const phoneNumber = value.replace(/[^\d]/g, '');

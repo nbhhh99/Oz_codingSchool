@@ -113,7 +113,7 @@ const pages = {
                 <td>${r.chart_number}</td>
                 <td>${r.symptoms}</td>
                 <td>${new Date(r.created_at).toLocaleString()}</td>
-                <td><button onclick="navigate('/medical-records/${r.id}')">상세보기</button></td>
+                <td><button onclick="navigate('/patients/${patientId}/medical-records/${r.id}')">상세보기</button></td>
             </tr>
         `).join('');
     },
@@ -143,21 +143,21 @@ const pages = {
         document.getElementById('cancel-btn').onclick = () => navigate(`/patients/${patientId}`);
     },
 
-    async renderRecordDetail(recordId) {
-        const record = await apis.getMedicalRecord(recordId);
-        const analyses = await apis.getMedicalRecordAnalyses(recordId);
+    async renderRecordDetail(patientId, recordId) {
+        const record = await apis.getMedicalRecord(patientId, recordId);
+        const analyses = await apis.getMedicalRecordAnalyses(patientId, recordId);
         const html = await utils.loadTemplate('record-detail');
         const app = document.getElementById('app');
         app.innerHTML = html;
-        
+
         document.getElementById('record-id').innerText = record.id;
         document.getElementById('chart-number').innerText = record.chart_number;
         document.getElementById('symptoms-text').innerText = record.symptoms;
         document.getElementById('created-at').innerText = new Date(record.created_at).toLocaleString();
         document.getElementById('xray-img').src = record.xray_image_url;
-        
-        document.getElementById('predict-btn').onclick = () => this.handlePredict(recordId);
-        document.getElementById('back-to-patient-btn').onclick = () => navigate(`/patients/${record.patient_id}`);
+
+        document.getElementById('predict-btn').onclick = () => this.handlePredict(patientId, recordId);
+        document.getElementById('back-to-patient-btn').onclick = () => navigate(`/patients/${record.patient_id || patientId}`);
         
         const analysisList = document.getElementById('analysis-list');
         if (analyses.length === 0) {
@@ -196,7 +196,7 @@ const pages = {
         // 현재 사용자 정보 표시
         document.getElementById('me-email').innerText = state.user.email;
         document.getElementById('me-name-display').innerText = state.user.name;
-        document.getElementById('me-department-display').innerText = state.user.department;
+        document.getElementById('me-department-display').innerText = utils.deptLabel(state.user.department);
         document.getElementById('me-gender-display').innerText = state.user.gender === 'male' ? '남성' : '여성';
         document.getElementById('me-phone-display').innerText = utils.formatPhoneNumber(state.user.phone_number);
         document.getElementById('me-role-display').innerText = state.user.role;
@@ -239,10 +239,10 @@ const pages = {
                 <td>${u.id}</td>
                 <td>${u.name}</td>
                 <td>${u.email}</td>
-                <td>${u.department}</td>
+                <td>${utils.deptLabel(u.department)}</td>
                 <td>${utils.formatPhoneNumber(u.phone_number)}</td>
                 <td>
-                    <select onchange="pages.handleRoleUpdate(${u.id}, this.value)" ${u.id === state.user.id ? 'disabled' : ''}>
+                    <select onchange="pages.handleRoleUpdate('${u.id}', this.value)" ${u.id === state.user.id ? 'disabled' : ''}>
                         <option value="pending" ${u.role === 'pending' ? 'selected' : ''}>승인대기</option>
                         <option value="staff" ${u.role === 'staff' ? 'selected' : ''}>일반회원</option>
                         <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>관리자</option>
@@ -469,11 +469,11 @@ const pages = {
         }
     },
 
-    async handlePredict(recordId) {
+    async handlePredict(patientId, recordId) {
         try {
-            await apis.predictPneumonia(recordId);
+            await apis.predictPneumonia(patientId, recordId);
             utils.showAlert('AI 예측이 완료되었습니다.', 'success');
-            navigate(`/medical-records/${recordId}`, false);
+            navigate(`/patients/${patientId}/medical-records/${recordId}`, false);
         } catch (err) {
             utils.showAlert(`AI 예측 실패: ${err.message}`, 'error');
         }
