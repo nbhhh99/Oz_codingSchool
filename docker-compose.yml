@@ -3,23 +3,37 @@ services:
     build:
       context: .
       dockerfile: app/Dockerfile
-    entrypoint: sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # 개발용 실행: DB 마이그레이션 반영 후 --reload 로 기동해
+    # 로컬에서 수정한 코드가 컨테이너에 즉시 반영되도록 한다.
+    command:
+      - sh
+      - -c
+      - |
+        uv run --no-sync alembic upgrade head &&
+        uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app --reload-dir worker
     ports:
       - "8000:8000"
     volumes:
-      - ./app:/app
-      - static_volume:/app/static
-      - media_volume:/app/media
+      - .:/app                      # 로컬 볼륨을 컨테이너 내 /app 경로로 마운트
+      - media_volume:/app/media     # 업로드 파일(X-Ray 등)은 별도 볼륨에 영속화
+    env_file:
+      - .env
+    environment:
+      DB_HOST: mysql                     # compose 네트워크 상 mysql 서비스명으로 접속
+      WATCHFILES_FORCE_POLLING: "true"   # bind-mount 환경에서 --reload 파일 변경 감지 보장
+    depends_on:
+      mysql:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/healthcheck || exit 1"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 3
-    depends_on:
-      - mysql
+      retries: 5
+      start_period: 30s
 
   mysql:
     image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
       - mysql_volume:/var/lib/mysql
     environment:
@@ -27,16 +41,15 @@ services:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_PORT: ${DB_PORT}
     ports:
       - "${DB_PORT}:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      timeout: 20s
-      retries: 5
-
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   mysql_volume:
-  static_volume:
   media_volume:
