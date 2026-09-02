@@ -1,6 +1,7 @@
-# NOTE: 실제 빌드(`docker build -f app/Dockerfile .`)에서 Docker 가 읽는 파일은
-# 빌드 컨텍스트 루트의 `/.dockerignore` 이다. 이 파일은 과제 요구사항(app/.dockerignore)
-# 충족과 문서화를 위해 동일 내용으로 유지한다.
+# Docker 는 .dockerignore 를 "빌드 컨텍스트 루트"에서만 읽는다.
+# `docker build -f app/Dockerfile .` 처럼 컨텍스트가 repo 루트이면
+# app/.dockerignore 는 적용되지 않으므로, 실제로 동작하는 파일은 이 파일이다.
+# (app/.dockerignore 는 과제 요구사항 유지를 위해 동일 내용으로 함께 관리)
 
 # 환경변수 / 시크릿
 .env
