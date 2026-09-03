@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 680" font-family="'Segoe Print','Bradley Hand','Comic Sans MS',ui-rounded,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1e1e1e"/>
+    </marker>
+    <marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1080" height="680" fill="#ffffff"/>
+
+  <text x="540" y="40" text-anchor="middle" font-size="24" fill="#1e1e1e">동시성 문제 해결을 위한 Event-Driven Architecture</text>
+  <text x="540" y="66" text-anchor="middle" font-size="14" fill="#666">AI 폐렴 예측 — FastAPI(요청 처리) 와 AI Worker(무거운 추론) 를 분리하고 Redis 큐로 작업 전달</text>
+
+  <!-- separation divider -->
+  <line x1="470" y1="95" x2="470" y2="600" stroke="#adb5bd" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="270" y="112" text-anchor="middle" font-size="13" fill="#868e96">◀ 요청 처리 (이벤트 루프, 논블로킹)</text>
+  <text x="780" y="112" text-anchor="middle" font-size="13" fill="#868e96">분리된 프로세스 (블로킹 작업) ▶</text>
+
+  <!-- Client -->
+  <rect x="40" y="250" width="150" height="96" rx="12" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2.5"/>
+  <text x="115" y="288" text-anchor="middle" font-size="16" fill="#1e1e1e">Client</text>
+  <text x="115" y="310" text-anchor="middle" font-size="12" fill="#1e1e1e">의료진 브라우저</text>
+
+  <!-- FastAPI -->
+  <rect x="285" y="210" width="185" height="176" rx="12" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2.5"/>
+  <text x="377" y="242" text-anchor="middle" font-size="16" fill="#1e1e1e">FastAPI (API 서버)</text>
+  <text x="377" y="262" text-anchor="middle" font-size="12" fill="#2b8a3e">= Producer</text>
+  <text x="377" y="292" text-anchor="middle" font-size="11" fill="#1e1e1e">POST .../ai-prediction</text>
+  <text x="377" y="310" text-anchor="middle" font-size="11" fill="#1e1e1e">1) 진료기록·X-ray 검증</text>
+  <text x="377" y="328" text-anchor="middle" font-size="11" fill="#1e1e1e">2) 큐에 작업 적재</text>
+  <text x="377" y="346" text-anchor="middle" font-size="11" fill="#1e1e1e">3) 즉시 202 응답</text>
+  <text x="377" y="368" text-anchor="middle" font-size="11" fill="#1e1e1e">(추론은 기다리지 않음)</text>
+
+  <!-- Redis -->
+  <rect x="560" y="150" width="215" height="270" rx="12" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2.5"/>
+  <text x="667" y="178" text-anchor="middle" font-size="16" fill="#1e1e1e">Redis</text>
+  <text x="667" y="196" text-anchor="middle" font-size="11" fill="#c92a2a">Message Broker</text>
+
+  <rect x="580" y="212" width="175" height="86" rx="8" fill="#fff5f5" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="667" y="236" text-anchor="middle" font-size="13" fill="#1e1e1e">task_queue</text>
+  <text x="667" y="256" text-anchor="middle" font-size="11" fill="#1e1e1e">List · LPUSH / BRPOP</text>
+  <text x="667" y="276" text-anchor="middle" font-size="11" fill="#1e1e1e">FIFO 작업 대기열</text>
+  <text x="667" y="292" text-anchor="middle" font-size="10" fill="#868e96">서버 재시작돼도 유지</text>
+
+  <rect x="580" y="312" width="175" height="86" rx="8" fill="#fff5f5" stroke="#1e1e1e" stroke-width="2"/>
+  <text x="667" y="336" text-anchor="middle" font-size="13" fill="#1e1e1e">result:{job_id}</text>
+  <text x="667" y="356" text-anchor="middle" font-size="11" fill="#1e1e1e">Pub/Sub · PUBLISH</text>
+  <text x="667" y="376" text-anchor="middle" font-size="11" fill="#1e1e1e">완료 알림 (선택)</text>
+  <text x="667" y="392" text-anchor="middle" font-size="10" fill="#868e96">또는 상태 키 SET</text>
+
+  <!-- AI Worker -->
+  <rect x="860" y="210" width="180" height="176" rx="12" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="2.5"/>
+  <text x="950" y="240" text-anchor="middle" font-size="16" fill="#1e1e1e">AI Worker</text>
+  <text x="950" y="259" text-anchor="middle" font-size="12" fill="#e8590c">= Consumer (별도 프로세스)</text>
+  <text x="950" y="288" text-anchor="middle" font-size="11" fill="#1e1e1e">while True: BRPOP</text>
+  <text x="950" y="306" text-anchor="middle" font-size="11" fill="#1e1e1e">SimpleCNN 추론 (torch)</text>
+  <text x="950" y="324" text-anchor="middle" font-size="11" fill="#1e1e1e">CPU 수 초 소요 → 블로킹</text>
+  <text x="950" y="346" text-anchor="middle" font-size="11" fill="#1e1e1e">워커 N대로 수평 확장</text>
+  <text x="950" y="368" text-anchor="middle" font-size="10" fill="#868e96">멱등 처리 (중복 대비)</text>
+
+  <!-- MySQL -->
+  <rect x="560" y="470" width="215" height="96" rx="12" fill="#d0bfff" stroke="#1e1e1e" stroke-width="2.5"/>
+  <text x="667" y="502" text-anchor="middle" font-size="16" fill="#1e1e1e">MySQL</text>
+  <text x="667" y="524" text-anchor="middle" font-size="11" fill="#1e1e1e">ai_analysis_result</text>
+  <text x="667" y="542" text-anchor="middle" font-size="11" fill="#1e1e1e">is_pneumonia · confidence · ai_model</text>
+
+  <!-- arrows: main pipeline -->
+  <line x1="190" y1="298" x2="283" y2="298" stroke="#1e1e1e" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="472" y1="270" x2="578" y2="250" stroke="#1e1e1e" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="757" y1="255" x2="858" y2="270" stroke="#1e1e1e" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="905" y1="388" x2="760" y2="500" stroke="#1e1e1e" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- side flows (dashed) -->
+  <path d="M470 360 C 430 430, 250 420, 190 330" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrowDash)"/>
+  <path d="M905 300 C 830 340, 800 350, 758 350" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrowDash)"/>
+  <path d="M560 520 C 470 520, 400 470, 377 388" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrowDash)"/>
+  <path d="M115 348 C 115 470, 300 480, 300 480 L 300 388" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrowDash)"/>
+
+  <!-- step badges -->
+  <g font-size="12" fill="#1e1e1e">
+    <circle cx="236" cy="298" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="236" y="302" text-anchor="middle">1</text>
+    <circle cx="525" cy="255" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="525" y="259" text-anchor="middle">2</text>
+    <circle cx="805" cy="258" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="805" y="262" text-anchor="middle">3</text>
+    <circle cx="950" cy="196" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="950" y="200" text-anchor="middle">4</text>
+    <circle cx="812" cy="452" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="812" y="456" text-anchor="middle">5</text>
+    <circle cx="795" cy="345" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="795" y="349" text-anchor="middle">6</text>
+    <circle cx="452" cy="452" r="12" fill="#ffe066" stroke="#1e1e1e" stroke-width="2"/><text x="452" y="456" text-anchor="middle">7</text>
+  </g>
+
+  <!-- step legend -->
+  <g font-size="12.5" fill="#1e1e1e">
+    <text x="40" y="612">1  예측 요청  POST /api/v1/patients/{id}/medical-records/{id}/ai-prediction</text>
+    <text x="40" y="632">2  FastAPI 가 작업을 큐에 넣음  LPUSH task_queue {record_id, xray_path}  →  Client 에 202 {job_id} 즉시 반환 (점선)</text>
+    <text x="40" y="652">3  Worker 가 BRPOP 으로 작업 수신 (blocking)      4  SimpleCNN 추론 실행      5  결과를 MySQL 에 INSERT</text>
+    <text x="40" y="672">6  result 채널에 PUBLISH (완료 알림, 점선)      7  Client 가 GET .../ai-predictions 폴링 → FastAPI 가 MySQL 조회 후 반환 (점선)</text>
+  </g>
+</svg>
