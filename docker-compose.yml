@@ -50,6 +50,22 @@ services:
       retries: 10
       start_period: 30s
 
+  redis:
+    image: redis:7-alpine
+    # AOF 로 작업 큐를 디스크에 영속화 (컨테이너 재시작에도 큐 유지)
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_volume:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
 volumes:
   mysql_volume:
   media_volume:
+  redis_volume:
