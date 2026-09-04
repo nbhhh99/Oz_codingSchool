@@ -22,7 +22,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -95,8 +94,7 @@ async def _prediction_lock(record_id: uuid_pkg.UUID):
 
     (선택 요구사항 — 동시 요청 문제 해결) 여러 요청이 동시에 캐시 미스로 들어와도
     Redis 분산 잠금으로 한 번에 하나만 큐에 넣게 하고, 잠금을 얻은 뒤 캐시를
-    재확인해 중복 추론을 피한다. 잠금 자체를 얻지 못해도(예: 경합 타임아웃) 추론은
-    계속 진행되며, 이때는 DB 유니크 제약이 중복 저장을 막는 최종 안전장치가 된다.
+    재확인해(run_pneumonia_prediction 참고) 중복 추론과 중복 저장을 피한다.
     """
     redis_client = get_redis()
     lock = redis_client.lock(
@@ -245,26 +243,14 @@ async def run_pneumonia_prediction(
         )
 
     # 5. 결과 저장 (heatmap 생성은 이번 단계 범위 밖 → None)
-    try:
-        ai_result = await create_ai_result(
-            db=db,
-            record_id=record_id,
-            is_pneumonia=payload.is_pneumonia,
-            confidence=payload.confidence,
-            ai_model=payload.ai_model,
-            heatmap_url=None,
-        )
-    except IntegrityError:
-        # 잠금을 얻지 못한 동시 요청이 먼저 저장한 경우 → 저장된 결과를 캐시로 반환
-        await db.rollback()
-        existing = await get_ai_result_by_record_and_model(
-            db=db,
-            record_id=record_id,
-            ai_model=AI_MODEL_NAME,
-        )
-        if existing is None:
-            raise
-        return existing, True
+    ai_result = await create_ai_result(
+        db=db,
+        record_id=record_id,
+        is_pneumonia=payload.is_pneumonia,
+        confidence=payload.confidence,
+        ai_model=payload.ai_model,
+        heatmap_url=None,
+    )
 
     return ai_result, False
 
