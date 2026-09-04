@@ -1,7 +1,16 @@
-# worker - 폐렴 예측 추론 모듈
+# worker - 폐렴 예측 추론 워커
 
-흉부 X-ray 이미지를 입력받아 **폐렴(PNEUMONIA) / 정상(NORMAL)** 을 예측하는 모듈이다.
+흉부 X-ray 이미지를 입력받아 **폐렴(PNEUMONIA) / 정상(NORMAL)** 을 예측하는 **독립 프로세스**다.
 인공지능 트랙 과제에서 만든 샘플 CNN 모델(`SimpleCNN`)을 사용한다.
+
+`docs/9일차_동시성문제_해결을위한_아키텍처설계.md` 의 Event-Driven Architecture 에서
+**Consumer** 역할을 맡는다. FastAPI(Producer)가 Redis 작업 큐에 넣은 작업을 꺼내
+추론하고, 결과를 Pub/Sub 으로 돌려준다. torch 추론이 이 프로세스만 블로킹하므로
+FastAPI 이벤트 루프는 영향을 받지 않는다.
+
+```
+클라이언트 → FastAPI(Producer) → Redis(Broker/Queue) → worker(Consumer) → 결과 PUBLISH → FastAPI 가 DB 저장·응답
+```
 
 ## 구성
 
@@ -9,11 +18,42 @@
 worker/
 ├── __init__.py
 ├── model.py                     # 모델 정의 + 로딩(메모리 캐시) + 추론 함수
-├── requirements.txt             # torch / torchvision / pillow
+├── redis_client.py              # Redis 동기 클라이언트 (작업 큐 소비 / 결과 발행)
+├── main.py                      # 워커 진입점: while True 로 큐 소비 → 추론 → PUBLISH
+├── Dockerfile                   # 추론 전용 최소 이미지 (torch(cpu) 만, fastapi 없음)
+├── requirements.txt             # (로컬 설치용) torch / torchvision / pillow
 └── models/
     ├── model_state_dict.pth     # ★ 실제 사용하는 학습 가중치 (state_dict)
     └── model.pth                # 전체 모델 pickle (참고용, 코드에서는 사용 안 함)
 ```
+
+## 작업/결과 프로토콜 (Redis)
+
+| 항목 | 키 / 채널 | 자료구조 | 설명 |
+|---|---|---|---|
+| 작업 큐 | `pneumonia:task_queue` | List | FastAPI 가 `LPUSH`, 워커가 `BLMOVE`(RIGHT→LEFT)로 소비 |
+| 처리중 | `pneumonia:task_queue:processing:{worker_id}` | List | 소비한 작업을 잠시 보관. 완료 시 `LREM`. 비정상 종료 시 다음 기동에서 큐로 복구 |
+| 결과 | `pneumonia:result:{job_id}` | Pub/Sub | 워커가 추론 결과(또는 `status:"error"`)를 `PUBLISH` |
+
+작업 payload: `{job_id, record_id, image_url, ai_model, result_channel}`
+결과 payload: `{job_id, status:"ok", is_pneumonia, confidence, ai_model}` 또는 `{job_id, status:"error", detail}`
+
+## 실행
+
+```bash
+# docker compose (redis + ai-worker 함께)
+docker compose up -d redis ai-worker
+
+# 처리량을 늘리려면 워커를 여러 개 (List 큐가 작업을 하나씩 분배)
+docker compose up -d --scale ai-worker=3
+
+# 로컬에서 직접
+uv sync --only-group ai
+REDIS_URL=redis://localhost:6379/0 uv run --no-sync python -m worker.main
+```
+
+환경변수: `REDIS_URL`, `PREDICTION_QUEUE_KEY`(기본 `pneumonia:task_queue`),
+`MEDIA_BASE_DIR`(공유 media 볼륨 경로, 기본 `/app`).
 
 `model.py` 는 `model_state_dict.pth` 만 사용한다.
 `model.pth` 는 전체 객체가 `__main__.SimpleCNN` 으로 pickle 되어 있어 다른 모듈에서

@@ -1,11 +1,13 @@
-# 폐렴 예측 추론 워커 전용 의존성
-# 메인 FastAPI 앱과 분리해서 관리한다. (torch 계열은 용량이 커서 pyproject 에 넣지 않음)
+# 폐렴 예측 추론 워커 전용 의존성 (로컬에서 pip 로 설치할 때 쓰는 목록).
 #
-# 설치 (CPU 버전):
-#   uv pip install -r worker/requirements.txt --index-url https://download.pytorch.org/whl/cpu
-# 또는:
-#   pip install -r worker/requirements.txt
+# 정식 경로는 pyproject.toml 의 [dependency-groups].ai 이며,
+#   uv sync --only-group ai
+# 로 설치하면 CPU 전용 torch 휠까지 lock 대로 재현된다. 이 파일은 그 미러다.
+#
+# pip 로 직접 설치 (CPU 버전):
+#   pip install -r worker/requirements.txt --index-url https://download.pytorch.org/whl/cpu
 
 torch>=2.2
 torchvision>=0.17
 pillow>=10.0
+redis>=5.2.0
