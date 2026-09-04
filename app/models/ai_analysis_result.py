@@ -15,12 +15,15 @@ if TYPE_CHECKING:
 class AiAnalysisResult(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "ai_analysis_results"
 
-    # 캐시 조회(record_id + ai_model)용 복합 인덱스 (NFR-PRED-002)
+    # 캐시 조회(record_id + ai_model)용 복합 인덱스 (NFR-PRED-002).
+    # UNIQUE 로 둬서 "동일 진료기록 + 동일 모델" 결과는 한 행만 존재하도록 강제한다.
+    # → 동시 요청이 잠금을 우회해도 중복 저장이 DB 단에서 막힌다.
     __table_args__ = (
         Index(
             "ix_ai_analysis_results_record_id_ai_model",
             "record_id",
             "ai_model",
+            unique=True,
         ),
     )
 

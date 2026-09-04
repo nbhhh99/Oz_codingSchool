@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -11,8 +12,18 @@ from app.apis.user_apis import router as user_router
 from app.apis.patient_apis import router as patient_router
 from app.apis.medical_record_apis import router as medical_record_router
 from app.apis.ai_prediction_apis import router as ai_prediction_router
+from app.core.redis_client import close_redis
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # 폐렴 예측 작업 큐/결과 Pub-Sub 용 Redis 커넥션은 첫 요청 때 지연 생성되고,
+    # 앱 종료 시 여기서 정리한다.
+    yield
+    await close_redis()
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(practice_router)
 app.include_router(auth_router)
 app.include_router(user_router)

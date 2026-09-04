@@ -1,14 +1,13 @@
 """AI 예측 API 통합 테스트 (SQLite + ASGI).
 
-`worker.model.predict` 는 스텁으로 대체하고, X-Ray 로컬 경로 검증은 우회한다.
+추론은 별도 워커로 분리됐으므로, Redis 왕복(`request_prediction`)과 분산 잠금
+(`_prediction_lock`)을 스텁으로 대체하고 X-Ray 로컬 경로 검증은 우회한다.
 검증 대상은 라우터/서비스/리포지토리/DB 및 캐시·상태코드 분기 로직이다.
 """
 
-import sys
-import types
+import contextlib
 import uuid as uuid_pkg
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -19,26 +18,26 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture(autouse=True)
 def _stub_worker(monkeypatch):
-    """`worker.model` 을 가짜 모듈로 대체한다.
+    """워커/Redis 의존성을 스텁으로 대체한다.
 
-    이렇게 하면 torch 미설치 환경에서도 API 테스트가 돌아간다.
-    (서비스는 추론 시점에 `from worker.model import predict` 로 지연 import 한다.)
+    서비스는 이제 `request_prediction()` 으로 Redis 큐에 작업을 넣고 결과 Pub/Sub 을
+    기다린다. 테스트에서는 그 함수가 곧바로 결과를 돌려주도록 바꾸고, 동시요청 직렬화용
+    Redis 잠금은 무력화한다. (Redis / torch 없이 API 흐름을 검증한다.)
     """
 
-    def fake_predict(_image):
-        return SimpleNamespace(
+    async def fake_request_prediction(record_id, image_url):
+        return svc.PredictionPayload(
             is_pneumonia=True,
-            label="PNEUMONIA",
             confidence=91.5,
-            probabilities={"NORMAL": 0.085, "PNEUMONIA": 0.915},
             ai_model="SimpleCNN",
         )
 
-    fake_module = types.ModuleType("worker.model")
-    fake_module.predict = fake_predict
-    fake_module.AI_MODEL_NAME = "SimpleCNN"
-    monkeypatch.setitem(sys.modules, "worker.model", fake_module)
+    @contextlib.asynccontextmanager
+    async def fake_lock(_record_id):
+        yield True
 
+    monkeypatch.setattr(svc, "request_prediction", fake_request_prediction)
+    monkeypatch.setattr(svc, "_prediction_lock", fake_lock)
     monkeypatch.setattr(
         svc, "_resolve_local_xray_path", lambda _url: Path("/tmp/fake.png")
     )

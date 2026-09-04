@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
+# FastAPI 앱(app/) 런타임 의존성.
+# torch 같은 무거운 AI 라이브러리는 여기에 넣지 않는다 (아래 [dependency-groups].ai 로 분리).
 dependencies = [
     "alembic>=1.18.4",
     "asyncmy>=0.2.11",
@@ -13,6 +15,30 @@ dependencies = [
     "pydantic-settings>=2.13.1",
     "pyjwt>=2.13.0",
     "pymysql>=1.2.0",
+    "redis>=5.2.0",
     "sqlalchemy[asyncio]>=2.0.49",
     "uuid6>=2025.0.1",
 ]
+
+[dependency-groups]
+# AI 추론 워커(worker/) 전용 의존성.
+#   uv sync --only-group ai   → fastapi/sqlalchemy 없이 추론에 필요한 패키지만 설치
+# 이렇게 나눠야 ai-worker 이미지에 torch 만 들어가고, fastapi 이미지에는
+# torch 가 빠져 두 이미지 용량이 각각 최소화된다.
+ai = [
+    "torch>=2.2",
+    "torchvision>=0.17",
+    "pillow>=10.0",
+    "redis>=5.2.0",
+]
+
+[[tool.uv.index]]
+# torch/torchvision 은 CPU 전용 휠을 받아 이미지 용량을 줄인다.
+# (기본 PyPI 리눅스 휠은 CUDA 라이브러리를 포함해 수 GB 에 달한다.)
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu", marker = "sys_platform == 'linux'" }
+torchvision = { index = "pytorch-cpu", marker = "sys_platform == 'linux'" }

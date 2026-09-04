@@ -20,9 +20,12 @@ services:
       - .env
     environment:
       DB_HOST: mysql                     # compose 네트워크 상 mysql 서비스명으로 접속
+      REDIS_URL: redis://redis:6379/0    # 폐렴 예측 작업 큐 / 결과 Pub-Sub
       WATCHFILES_FORCE_POLLING: "true"   # bind-mount 환경에서 --reload 파일 변경 감지 보장
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/healthcheck || exit 1"]
@@ -30,6 +33,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  # AI 추론 워커 (Consumer). FastAPI 와 분리된 프로세스/이미지로,
+  # Redis 작업 큐에서 작업을 꺼내 SimpleCNN 추론 후 결과를 Pub/Sub 으로 발행한다.
+  # 처리량을 늘리려면:  docker compose up --scale ai-worker=3
+  ai-worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    # 개발 중 워커 코드 수정이 바로 반영되도록 소스를 bind-mount 한다.
+    # (이미지에는 이미 worker/ 가 들어있지만, 볼륨이 그 위를 덮어쓴다.)
+    command: ["python", "-m", "worker.main"]
+    volumes:
+      - ./worker:/app/worker        # 워커 소스
+      - media_volume:/app/media     # FastAPI 가 저장한 X-Ray 를 같은 경로로 읽는다
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      PREDICTION_QUEUE_KEY: pneumonia:task_queue
+      MEDIA_BASE_DIR: /app
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   mysql:
     image: mysql:8.0
@@ -50,6 +78,22 @@ services:
       retries: 10
       start_period: 30s
 
+  redis:
+    image: redis:7-alpine
+    # AOF 로 작업 큐를 디스크에 영속화 (컨테이너 재시작에도 큐 유지)
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_volume:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
 volumes:
   mysql_volume:
   media_volume:
+  redis_volume:
