@@ -228,6 +228,9 @@ async def run_pneumonia_prediction(
     _resolve_local_xray_path(xray.image_url)
 
     # 4. 추론을 워커에 위임 — 큐 적재 + 결과 구독. 동시 요청은 잠금으로 직렬화한다.
+    #    저장까지 잠금 안에서 끝내야, 뒤늦게 잠금을 얻은 요청의 캐시 재확인이
+    #    앞선 요청이 저장한 행을 보고 중복 추론·중복 저장을 피할 수 있다.
+    #    (캐시 조회는 scalar_one_or_none 이라 중복 행이 생기면 이후 조회가 500 이 된다.)
     async with _prediction_lock(record_id):
         cached = await get_ai_result_by_record_and_model(
             db=db,
@@ -242,15 +245,15 @@ async def run_pneumonia_prediction(
             image_url=xray.image_url,
         )
 
-    # 5. 결과 저장 (heatmap 생성은 이번 단계 범위 밖 → None)
-    ai_result = await create_ai_result(
-        db=db,
-        record_id=record_id,
-        is_pneumonia=payload.is_pneumonia,
-        confidence=payload.confidence,
-        ai_model=payload.ai_model,
-        heatmap_url=None,
-    )
+        # 5. 결과 저장 (heatmap 생성은 이번 단계 범위 밖 → None)
+        ai_result = await create_ai_result(
+            db=db,
+            record_id=record_id,
+            is_pneumonia=payload.is_pneumonia,
+            confidence=payload.confidence,
+            ai_model=payload.ai_model,
+            heatmap_url=None,
+        )
 
     return ai_result, False
 
